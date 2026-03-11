@@ -43,9 +43,13 @@ export default {
       }
       
       try {
-        // 这里简化处理，实际应该调用登录接口
-        uni.setStorageSync('token', 'mock-token')
-        uni.setStorageSync('userInfo', { username: this.form.username })
+        const res = await api.auth.login({
+          username: this.form.username,
+          password: this.form.password
+        })
+        
+        uni.setStorageSync('token', res.data.token)
+        uni.setStorageSync('userInfo', res.data.user)
         
         uni.showToast({ title: '登录成功', icon: 'success' })
         

@@ -39,6 +39,12 @@ const request = (options) => {
 
 // API 接口
 export const api = {
+  // 认证相关
+  auth: {
+    login: (data) => request({ url: '/api/v1/auth/login', method: 'POST', data }),
+    logout: () => request({ url: '/api/v1/auth/logout', method: 'POST' }),
+    getCurrentUser: () => request({ url: '/api/v1/auth/me', method: 'GET' }),
+  },
   // 用户相关
   user: {
     list: (params) => request({ url: '/api/v1/users', method: 'GET', data: params }),
