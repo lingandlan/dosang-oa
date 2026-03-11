@@ -30,3 +30,7 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+
+jwt:
+  secret: openoa-secret-key-for-jwt-token-generation-2024-very-long-secret
+  expiration: 86400000
