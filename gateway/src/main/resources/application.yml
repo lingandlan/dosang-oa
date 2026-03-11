@@ -1,0 +1,49 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gateway
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+      routes:
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/users/**
+        - id: approval-service
+          uri: lb://approval-service
+          predicates:
+            - Path=/api/v1/approvals/**
+        - id: attendance-service
+          uri: lb://attendance-service
+          predicates:
+            - Path=/api/v1/attendance/**
+        - id: notice-service
+          uri: lb://notice-service
+          predicates:
+            - Path=/api/v1/notices/**
+        - id: video-service
+          uri: lb://video-service
+          predicates:
+            - Path=/api/v1/video/**
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    register-with-eureka: true
+    fetch-registry: true
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+
+# 日志配置
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    com.netflix.discovery: INFO
