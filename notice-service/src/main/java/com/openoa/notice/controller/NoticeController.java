@@ -1,9 +1,8 @@
 package com.openoa.notice.controller;
 
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.openoa.notice.entity.Notice;
-import com.openoa.notice.mapper.NoticeMapper;
+import com.openoa.notice.service.NoticeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,59 +12,56 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/notices")
 public class NoticeController {
-    
+
     @Autowired
-    private NoticeMapper noticeMapper;
-    
-    // 获取公告列表
+    private NoticeService noticeService;
+
     @GetMapping
     public Map<String, Object> list(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) String status) {
-        
-        Page<Notice> page = new Page<>(pageNum, pageSize);
-        LambdaQueryWrapper<Notice> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(Notice::getStatus, "PUBLISHED")
-               .orderByDesc(Notice::getPublishTime);
-        
-        if (status != null) wrapper.eq(Notice::getStatus, status);
-        wrapper.orderByDesc(Notice::getCreateTime);
-        
-        Page<Notice> result = noticeMapper.selectPage(page, wrapper);
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String category,
+            @RequestParam(required = false) Integer pinned,
+            @RequestParam(required = false) String scope) {
+
+        Page<Notice> result = noticeService.pageList(pageNum, pageSize, status, category, pinned, scope);
         return Map.of("code", 200, "message", "success", "data", result);
     }
-    
-    // 获取公告详情
+
     @GetMapping("/{id}")
     public Map<String, Object> getById(@PathVariable Long id) {
-        Notice notice = noticeMapper.selectById(id);
+        Notice notice = noticeService.getById(id);
         return Map.of("code", 200, "message", "success", "data", notice);
     }
-    
-    // 发布公告
+
     @PostMapping
     public Map<String, Object> create(@RequestBody Notice notice) {
         notice.setStatus("DRAFT");
         notice.setCreateTime(LocalDateTime.now());
-        noticeMapper.insert(notice);
+        noticeService.save(notice);
         return Map.of("code", 200, "message", "创建成功", "data", notice);
     }
-    
-    // 发布公告
+
+    @PutMapping("/{id}")
+    public Map<String, Object> update(@PathVariable Long id, @RequestBody Notice notice) {
+        notice.setId(id);
+        noticeService.updateById(notice);
+        return Map.of("code", 200, "message", "更新成功", "data", notice);
+    }
+
     @PutMapping("/{id}/publish")
     public Map<String, Object> publish(@PathVariable Long id) {
-        Notice notice = noticeMapper.selectById(id);
+        Notice notice = noticeService.getById(id);
         notice.setStatus("PUBLISHED");
         notice.setPublishTime(LocalDateTime.now());
-        noticeMapper.updateById(notice);
+        noticeService.updateById(notice);
         return Map.of("code", 200, "message", "发布成功");
     }
-    
-    // 删除公告
+
     @DeleteMapping("/{id}")
     public Map<String, Object> delete(@PathVariable Long id) {
-        noticeMapper.deleteById(id);
+        noticeService.removeById(id);
         return Map.of("code", 200, "message", "删除成功");
     }
 }
