@@ -164,4 +164,68 @@ class UserServiceTest extends BaseTest {
         assertEquals(2, result.size());
         verify(userMapper, times(1)).selectList(any(LambdaQueryWrapper.class));
     }
+
+    @Test
+    void login_withValidCredentials_shouldReturnUser() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(testUser1);
+
+        User result = userService.login("zhangsan", "password123");
+
+        assertNotNull(result);
+        assertEquals("zhangsan", result.getUsername());
+        assertEquals("password123", result.getPassword());
+        assertEquals(1, result.getStatus());
+        verify(userMapper, times(1)).selectOne(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    void login_withInvalidPassword_shouldReturnNull() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        User result = userService.login("zhangsan", "wrongpassword");
+
+        assertNull(result);
+        verify(userMapper, times(1)).selectOne(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    void login_withDisabledUser_shouldReturnNull() {
+        testUser1.setStatus(0);
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        User result = userService.login("zhangsan", "password123");
+
+        assertNull(result);
+        verify(userMapper, times(1)).selectOne(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    void login_withNonExistentUser_shouldReturnNull() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        User result = userService.login("nonexistent", "password");
+
+        assertNull(result);
+        verify(userMapper, times(1)).selectOne(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    void login_withEmptyUsername_shouldReturnNull() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        User result = userService.login("", "password");
+
+        assertNull(result);
+        verify(userMapper, times(1)).selectOne(any(LambdaQueryWrapper.class));
+    }
+
+    @Test
+    void login_withEmptyPassword_shouldReturnNull() {
+        when(userMapper.selectOne(any(LambdaQueryWrapper.class))).thenReturn(null);
+
+        User result = userService.login("zhangsan", "");
+
+        assertNull(result);
+        verify(userMapper, times(1)).selectOne(any(LambdaQueryWrapper.class));
+    }
 }

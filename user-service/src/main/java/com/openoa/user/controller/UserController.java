@@ -81,4 +81,28 @@ public class UserController {
         List<User> users = userService.listByDepartment(departmentId);
         return Result.success(users);
     }
+
+    @PostMapping("/login")
+    public Map<String, Object> login(@RequestBody Map<String, String> request) {
+        String username = request.get("username");
+        String password = request.get("password");
+        User user = userService.login(username, password);
+        if (user == null) {
+            return Map.of(
+                    "code", 401,
+                    "message", "用户名或密码错误"
+            );
+        }
+        return Map.of(
+                "code", 200,
+                "message", "登录成功",
+                "data", Map.of(
+                        "id", user.getId(),
+                        "username", user.getUsername(),
+                        "realName", user.getRealName(),
+                        "email", user.getEmail(),
+                        "phone", user.getPhone()
+                )
+        );
+    }
 }
