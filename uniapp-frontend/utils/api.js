@@ -41,6 +41,7 @@ const request = (options) => {
 export const api = {
   // 用户相关
   user: {
+    login: (data) => request({ url: '/api/v1/auth/login', method: 'POST', data }),
     list: (params) => request({ url: '/api/v1/users', method: 'GET', data: params }),
     getById: (id) => request({ url: `/api/v1/users/${id}`, method: 'GET' }),
     create: (data) => request({ url: '/api/v1/users', method: 'POST', data }),
