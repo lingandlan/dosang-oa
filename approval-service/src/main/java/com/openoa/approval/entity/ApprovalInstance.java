@@ -13,6 +13,9 @@ public class ApprovalInstance {
     @TableField("type_id")
     private Long typeId;
     
+    @TableField("template_id")
+    private Long templateId;
+    
     @TableField("user_id")
     private Long userId;
     
@@ -22,8 +25,18 @@ public class ApprovalInstance {
     
     private String status;
     
+    @TableField("current_node_id")
+    private Long currentNodeId;
+    
     @TableField("current_approver_id")
     private Long currentApproverId;
+    
+    private Integer currentLevel;
+    
+    @TableField("total_levels")
+    private Integer totalLevels;
+    
+    private String formData;
     
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
