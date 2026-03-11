@@ -16,6 +16,9 @@ public class Notice {
     @TableField("publish_time")
     private LocalDateTime publishTime;
     private String status;
+    private String category;
+    private Integer pinned;
+    private String scope;
     @TableField(fill = FieldFill.INSERT)
     private LocalDateTime createTime;
 }
