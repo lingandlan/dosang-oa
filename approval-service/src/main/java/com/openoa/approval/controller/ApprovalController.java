@@ -2,8 +2,11 @@ package com.openoa.approval.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.openoa.approval.common.Result;
+import com.openoa.approval.entity.ApprovalHistory;
 import com.openoa.approval.entity.ApprovalInstance;
 import com.openoa.approval.entity.ApprovalType;
+import com.openoa.approval.mapper.ApprovalHistoryMapper;
 import com.openoa.approval.mapper.ApprovalInstanceMapper;
 import com.openoa.approval.mapper.ApprovalTypeMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,23 +18,59 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/v1/approvals")
 public class ApprovalController {
-    
+
     @Autowired
     private ApprovalInstanceMapper instanceMapper;
-    
+
     @Autowired
     private ApprovalTypeMapper typeMapper;
+
+    @Autowired
+    private ApprovalHistoryMapper historyMapper;
     
-    // 获取审批类型列表
     @GetMapping("/types")
-    public Map<String, Object> listTypes() {
+    public Result<List<ApprovalType>> listTypes() {
         List<ApprovalType> types = typeMapper.selectList(null);
-        return Map.of("code", 200, "message", "success", "data", types);
+        return Result.success(types);
+    }
+
+    @GetMapping("/types/{id}")
+    public Result<ApprovalType> getTypeById(@PathVariable Long id) {
+        ApprovalType type = typeMapper.selectById(id);
+        if (type == null) {
+            return Result.error("审批类型不存在");
+        }
+        return Result.success(type);
+    }
+
+    @PostMapping("/types")
+    public Result<ApprovalType> createType(@RequestBody ApprovalType type) {
+        typeMapper.insert(type);
+        return Result.success("创建成功", type);
+    }
+
+    @PutMapping("/types/{id}")
+    public Result<ApprovalType> updateType(@PathVariable Long id, @RequestBody ApprovalType type) {
+        ApprovalType existing = typeMapper.selectById(id);
+        if (existing == null) {
+            return Result.error("审批类型不存在");
+        }
+        type.setId(id);
+        typeMapper.updateById(type);
+        return Result.success("更新成功", type);
+    }
+
+    @DeleteMapping("/types/{id}")
+    public Result<Void> deleteType(@PathVariable Long id) {
+        int rows = typeMapper.deleteById(id);
+        if (rows == 0) {
+            return Result.error("审批类型不存在");
+        }
+        return Result.success("删除成功", null);
     }
     
-    // 获取审批列表
     @GetMapping
-    public Map<String, Object> list(
+    public Result<Page<ApprovalInstance>> list(
             @RequestParam(defaultValue = "1") Integer pageNum,
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) Long userId,
@@ -46,29 +85,36 @@ public class ApprovalController {
         }
         wrapper.orderByDesc(ApprovalInstance::getCreateTime);
         Page<ApprovalInstance> result = instanceMapper.selectPage(page, wrapper);
-        return Map.of("code", 200, "message", "success", "data", result);
+        return Result.success(result);
     }
-    
-    // 提交审批
+
+    @GetMapping("/{id}")
+    public Result<ApprovalInstance> getById(@PathVariable Long id) {
+        ApprovalInstance instance = instanceMapper.selectById(id);
+        if (instance == null) {
+            return Result.error("审批不存在");
+        }
+        return Result.success(instance);
+    }
+
     @PostMapping
-    public Map<String, Object> create(@RequestBody ApprovalInstance instance) {
+    public Result<ApprovalInstance> create(@RequestBody ApprovalInstance instance) {
         instance.setStatus("PENDING");
         instanceMapper.insert(instance);
-        return Map.of("code", 200, "message", "提交成功", "data", instance);
+        return Result.success("提交成功", instance);
     }
-    
-    // 审批操作 (通过/拒绝)
+
     @PutMapping("/{id}")
-    public Map<String, Object> approve(
+    public Result<ApprovalInstance> approve(
             @PathVariable Long id,
             @RequestParam String action,
             @RequestParam(required = false) Long approverId,
             @RequestParam(required = false) String comment) {
         ApprovalInstance instance = instanceMapper.selectById(id);
         if (instance == null) {
-            return Map.of("code", 404, "message", "审批不存在");
+            return Result.error("审批不存在");
         }
-        
+
         if ("APPROVE".equals(action)) {
             instance.setStatus("APPROVED");
         } else if ("REJECT".equals(action)) {
@@ -76,14 +122,86 @@ public class ApprovalController {
         }
         instance.setCurrentApproverId(approverId);
         instanceMapper.updateById(instance);
-        
-        return Map.of("code", 200, "message", "操作成功");
+
+        ApprovalHistory history = new ApprovalHistory();
+        history.setInstanceId(id);
+        history.setApproverId(approverId);
+        history.setAction(action);
+        history.setComment(comment);
+        historyMapper.insert(history);
+
+        return Result.success("操作成功", instance);
     }
-    
-    // 获取审批详情
-    @GetMapping("/{id}")
-    public Map<String, Object> getById(@PathVariable Long id) {
+
+    @PutMapping("/{id}/status")
+    public Result<ApprovalInstance> updateStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
         ApprovalInstance instance = instanceMapper.selectById(id);
-        return Map.of("code", 200, "message", "success", "data", instance);
+        if (instance == null) {
+            return Result.error("审批不存在");
+        }
+        instance.setStatus(status);
+        instanceMapper.updateById(instance);
+        return Result.success("状态更新成功", instance);
+    }
+
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        int rows = instanceMapper.deleteById(id);
+        if (rows == 0) {
+            return Result.error("审批不存在");
+        }
+        return Result.success("删除成功", null);
+    }
+
+    @GetMapping("/{instanceId}/history")
+    public Result<List<ApprovalHistory>> getHistory(@PathVariable Long instanceId) {
+        LambdaQueryWrapper<ApprovalHistory> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApprovalHistory::getInstanceId, instanceId);
+        wrapper.orderByDesc(ApprovalHistory::getCreateTime);
+        List<ApprovalHistory> history = historyMapper.selectList(wrapper);
+        return Result.success(history);
+    }
+
+    @GetMapping("/pending/{approverId}")
+    public Result<List<ApprovalInstance>> getPendingApprovals(@PathVariable Long approverId) {
+        LambdaQueryWrapper<ApprovalInstance> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApprovalInstance::getCurrentApproverId, approverId);
+        wrapper.eq(ApprovalInstance::getStatus, "PENDING");
+        wrapper.orderByDesc(ApprovalInstance::getCreateTime);
+        List<ApprovalInstance> pending = instanceMapper.selectList(wrapper);
+        return Result.success(pending);
+    }
+
+    @GetMapping("/statistics")
+    public Result<Map<String, Object>> getStatistics(@RequestParam Long userId) {
+        LambdaQueryWrapper<ApprovalInstance> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(ApprovalInstance::getUserId, userId);
+
+        long total = instanceMapper.selectCount(wrapper);
+
+        LambdaQueryWrapper<ApprovalInstance> pendingWrapper = new LambdaQueryWrapper<>();
+        pendingWrapper.eq(ApprovalInstance::getUserId, userId);
+        pendingWrapper.eq(ApprovalInstance::getStatus, "PENDING");
+        long pending = instanceMapper.selectCount(pendingWrapper);
+
+        LambdaQueryWrapper<ApprovalInstance> approvedWrapper = new LambdaQueryWrapper<>();
+        approvedWrapper.eq(ApprovalInstance::getUserId, userId);
+        approvedWrapper.eq(ApprovalInstance::getStatus, "APPROVED");
+        long approved = instanceMapper.selectCount(approvedWrapper);
+
+        LambdaQueryWrapper<ApprovalInstance> rejectedWrapper = new LambdaQueryWrapper<>();
+        rejectedWrapper.eq(ApprovalInstance::getUserId, userId);
+        rejectedWrapper.eq(ApprovalInstance::getStatus, "REJECTED");
+        long rejected = instanceMapper.selectCount(rejectedWrapper);
+
+        Map<String, Object> stats = Map.of(
+                "total", total,
+                "pending", pending,
+                "approved", approved,
+                "rejected", rejected
+        );
+        return Result.success(stats);
     }
 }

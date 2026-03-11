@@ -1,0 +1,9 @@
+package com.openoa.approval.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.openoa.approval.entity.ApprovalHistory;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface ApprovalHistoryMapper extends BaseMapper<ApprovalHistory> {
+}
