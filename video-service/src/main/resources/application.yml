@@ -11,8 +11,18 @@ spring:
       config:
         server-addr: ${NACOS_SERVER:localhost:8848}
         file-extension: yml
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/openoa_video?useUnicode=true&characterEncoding=utf8
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
 
-# Jitsi 配置
 jitsi:
   url: ${JITSI_URL:https://meet.example.com}
   api-key: ${JITSI_API_KEY:}
+
+mybatis-plus:
+  mapper-locations: classpath*:/mapper/**/*.xml
+  type-aliases-package: com.openoa.video.entity
+  configuration:
+    map-underscore-to-camel-case: true

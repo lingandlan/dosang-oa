@@ -7,6 +7,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 @Component
@@ -18,18 +19,18 @@ public class WebSocketHandler {
     @OnOpen
     public void onOpen(Session session, @PathParam("userId") String userId) {
         sessions.put(userId, session);
-        System.out.println("用户连接: " + userId);
+        System.out.println("用户连接: " + userId + ", 当前在线: " + sessions.size());
     }
     
     @OnClose
     public void onClose(@PathParam("userId") String userId) {
         sessions.remove(userId);
-        System.out.println("用户断开: " + userId);
+        System.out.println("用户断开: " + userId + ", 当前在线: " + sessions.size());
     }
     
     @OnMessage
     public void onMessage(String message, @PathParam("userId") String userId) {
-        System.out.println("收到消息: " + message);
+        System.out.println("收到消息[" + userId + "]: " + message);
     }
     
     @OnError
@@ -37,7 +38,6 @@ public class WebSocketHandler {
         error.printStackTrace();
     }
     
-    // 发送消息给指定用户
     public static void sendMessage(String userId, String message) {
         Session session = sessions.get(userId);
         if (session != null && session.isOpen()) {
@@ -49,7 +49,6 @@ public class WebSocketHandler {
         }
     }
     
-    // 广播消息
     public static void broadcast(String message) {
         sessions.values().forEach(session -> {
             if (session.isOpen()) {
@@ -60,5 +59,18 @@ public class WebSocketHandler {
                 }
             }
         });
+    }
+    
+    public static Set<String> getOnlineUsers() {
+        return sessions.keySet();
+    }
+    
+    public static int getOnlineCount() {
+        return sessions.size();
+    }
+    
+    public static boolean isOnline(String userId) {
+        Session session = sessions.get(userId);
+        return session != null && session.isOpen();
     }
 }
