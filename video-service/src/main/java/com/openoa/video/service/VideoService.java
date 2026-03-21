@@ -58,4 +58,20 @@ public class VideoService extends ServiceImpl<RoomMapper, Room> {
         Room room = getById(roomId);
         return room != null && room.getCreatorId().equals(userId);
     }
+
+    public MeetingBooking getBookingById(Long id) {
+        return meetingBookingMapper.selectById(id);
+    }
+
+    public MeetingBookingMapper getMeetingBookingMapper() {
+        return meetingBookingMapper;
+    }
+
+    public boolean saveBooking(MeetingBooking booking) {
+        return meetingBookingMapper.insert(booking) > 0;
+    }
+
+    public boolean updateBooking(MeetingBooking booking) {
+        return meetingBookingMapper.updateById(booking) > 0;
+    }
 }

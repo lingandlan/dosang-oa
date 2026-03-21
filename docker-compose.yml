@@ -1,0 +1,162 @@
+version: '3.8'
+
+services:
+  # MySQL 数据库
+  mysql:
+    image: mysql:8.0
+    container_name: oa-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 111111
+      MYSQL_DATABASE: oa_system
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./*/src/main/resources/db:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis 缓存
+  redis:
+    image: redis:7-alpine
+    container_name: oa-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+
+  # Eureka 服务注册中心
+  eureka-server:
+    build:
+      context: .
+      dockerfile: eureka-server/Dockerfile
+    container_name: oa-eureka
+    restart: always
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # API 网关
+  gateway:
+    build:
+      context: .
+      dockerfile: gateway/Dockerfile
+    container_name: oa-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - eureka-server
+
+  # 用户服务
+  user-service:
+    build:
+      context: .
+      dockerfile: user-service/Dockerfile
+    container_name: oa-user-service
+    restart: always
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - DB_HOST=mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+
+  # 审批服务
+  approval-service:
+    build:
+      context: .
+      dockerfile: approval-service/Dockerfile
+    container_name: oa-approval-service
+    restart: always
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - DB_HOST=mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # 公告服务
+  notice-service:
+    build:
+      context: .
+      dockerfile: notice-service/Dockerfile
+    container_name: oa-notice-service
+    restart: always
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - DB_HOST=mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # 视频服务
+  video-service:
+    build:
+      context: .
+      dockerfile: video-service/Dockerfile
+    container_name: oa-video-service
+    restart: always
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - DB_HOST=mysql
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  # WebSocket 服务
+  websocket-service:
+    build:
+      context: .
+      dockerfile: websocket-service/Dockerfile
+    container_name: oa-websocket-service
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      - eureka-server
+
+  # 前端
+  frontend:
+    build:
+      context: .
+      dockerfile: uniapp-frontend/Dockerfile
+    container_name: oa-frontend
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+
+volumes:
+  mysql-data:
+  redis-data:

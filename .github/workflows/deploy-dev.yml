@@ -1,0 +1,35 @@
+name: Deploy to Dev
+
+on:
+  push:
+    branches: [develop]
+
+jobs:
+  deploy-dev:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/k8s-set-context@v4
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG_DEV }}
+
+      - name: Deploy to Dev K8s
+        run: |
+          # 使用 dev 环境的镜像 tag
+          export TAG=dev-${{ github.sha }}
+          
+          # 部署
+          kubectl set image deployment/gateway gateway=${{ secrets.DOCKER_REGISTRY }}/oa-gateway:$TAG -n oa-system
+          kubectl set image deployment/user-service user-service=${{ secrets.DOCKER_REGISTRY }}/oa-user-service:$TAG -n oa-system
+          # ... 其他服务
+          
+          # 重启 deployments
+          kubectl rollout restart deployment -n oa-system
+
+      - name: Verify
+        run: |
+          kubectl get pods -n oa-system
+          kubectl get svc -n oa-system

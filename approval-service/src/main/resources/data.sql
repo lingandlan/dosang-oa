@@ -1,3 +1,10 @@
+-- 插入审批类型示例数据
+INSERT INTO approval_type (name, code, description, is_active, create_time, update_time)
+VALUES 
+('请假', 'LEAVE', '员工请假审批', 1, NOW(), NOW()),
+('报销', 'EXPENSE', '费用报销审批', 1, NOW(), NOW()),
+('出差', 'BUSINESS_TRIP', '商务出差审批', 1, NOW(), NOW());
+
 -- 插入审批模板示例数据
 INSERT INTO approval_template (name, code, description, form_config, is_active, create_time, update_time)
 VALUES 

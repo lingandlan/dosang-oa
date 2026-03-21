@@ -150,7 +150,7 @@ class ApprovalServiceTest extends BaseTest {
 
         assertNull(result);
         verify(instanceMapper, times(1)).selectById(999L);
-        verify(instanceMapper, never()).updateById(any());
+        verify(instanceMapper, never()).updateById(any(ApprovalInstance.class));
     }
 
     @Test

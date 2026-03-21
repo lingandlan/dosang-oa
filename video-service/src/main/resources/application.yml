@@ -4,13 +4,14 @@ server:
 spring:
   application:
     name: video-service
+  autoconfigure:
+    exclude:
+      - com.alibaba.cloud.nacos.ribbon.NacosRibbonAutoConfiguration
+      - com.alibaba.cloud.nacos.discovery.NacosDiscoveryAutoConfiguration
+      - com.alibaba.cloud.nacos.config.NacosConfigAutoConfiguration
   cloud:
-    nacos:
-      discovery:
-        server-addr: ${NACOS_SERVER:localhost:8848}
-      config:
-        server-addr: ${NACOS_SERVER:localhost:8848}
-        file-extension: yml
+    discovery:
+      enabled: false
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/openoa_video?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true

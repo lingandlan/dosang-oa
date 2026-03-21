@@ -1,0 +1,135 @@
+name: Build and Deploy to K8s
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  # 构建后端服务
+  build-backend:
+    runs-on: ubuntu-latest
+    outputs:
+      backend-image: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Set up Maven
+        uses: actions/setup-maven@v5
+        with:
+          maven-version: '3.9'
+
+      - name: Build with Maven
+        run: |
+          cd oa-system
+          mvn clean package -DskipTests
+
+      - name: Build and push Docker images
+        run: |
+          # 登录镜像仓库
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+          # 构建并推送各服务镜像
+          for service in gateway eureka-server user-service approval-service notice-service video-service websocket-service; do
+            docker build -t $REGISTRY/$IMAGE_NAME/$service:latest -t $REGISTRY/$IMAGE_NAME/$service:${{ github.sha }} oa-system/$service
+            docker push $REGISTRY/$IMAGE_NAME/$service:latest
+            docker push $REGISTRY/$IMAGE_NAME/$service:${{ github.sha }}
+          done
+
+      - name: Generate metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: $REGISTRY/$IMAGE_NAME/backend
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest
+
+  # 构建前端
+  build-frontend:
+    runs-on: ubuntu-latest
+    outputs:
+      frontend-image: ${{ steps.meta.outputs.tags }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: |
+          cd oa-system/uniapp-frontend
+          pnpm install --frozen-lockfile
+
+      - name: Build
+        run: |
+          cd oa-system/uniapp-frontend
+          pnpm build:h5
+
+      - name: Build and push Docker image
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          docker build -t $REGISTRY/$IMAGE_NAME/frontend:latest -t $REGISTRY/$IMAGE_NAME/frontend:${{ github.sha }} oa-system/uniapp-frontend
+          docker push $REGISTRY/$IMAGE_NAME/frontend:latest
+          docker push $REGISTRY/$IMAGE_NAME/frontend:${{ github.sha }}
+
+      - name: Generate metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: $REGISTRY/$IMAGE_NAME/frontend
+          tags: |
+            type=ref,event=branch
+            type=sha
+            type=raw,value=latest
+
+  # 部署到 K8s
+  deploy:
+    needs: [build-backend, build-frontend]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/k8s-set-context@v4
+        with:
+          kubeconfig: ${{ secrets.KUBECONFIG }}
+
+      - name: Update image tags in K8s manifests
+        run: |
+          # 更新后端镜像标签
+          cd k8s/base
+          sed -i 's|image: oa-gateway:latest|image: ${{ needs.build-backend.outputs.backend-image }}|g' 11-gateway.yaml
+          # ... 其他服务
+
+      - name: Deploy to K8s
+        run: |
+          kubectl apply -k k8s/base/ --namespace=oa-system
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/gateway -n oa-system
+          kubectl get pods -n oa-system

@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
@@ -28,16 +29,26 @@ public class VideoController {
             @RequestParam(defaultValue = "10") Integer pageSize,
             @RequestParam(required = false) Long departmentId,
             @RequestParam(required = false) String status) {
-
         Page<Room> result = videoService.pageRooms(pageNum, pageSize, departmentId, status);
-        return Map.of("code", 200, "message", "success", "data", result);
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "success");
+        response.put("data", result);
+        return response;
     }
 
     @GetMapping("/rooms/{id}")
     public Map<String, Object> getRoom(@PathVariable Long id) {
         Room room = videoService.getById(id);
         String meetingUrl = jitsiUrl + "/" + room.getRoomId();
-        return Map.of("code", 200, "message", "success", "data", Map.of("room", room, "meetingUrl", meetingUrl));
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "success");
+        Map<String, Object> data = new HashMap<>();
+        data.put("room", room);
+        data.put("meetingUrl", meetingUrl);
+        response.put("data", data);
+        return response;
     }
 
     @PostMapping("/rooms")
@@ -49,26 +60,46 @@ public class VideoController {
         room.setStatus("ACTIVE");
         videoService.save(room);
         String meetingUrl = jitsiUrl + "/" + room.getRoomId();
-        return Map.of("code", 200, "message", "创建成功", "data", Map.of("room", room, "meetingUrl", meetingUrl));
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "创建成功");
+        Map<String, Object> data = new HashMap<>();
+        data.put("room", room);
+        data.put("meetingUrl", meetingUrl);
+        response.put("data", data);
+        return response;
     }
 
     @PutMapping("/rooms/{id}")
     public Map<String, Object> updateRoom(@PathVariable Long id, @RequestBody Room room, @RequestParam Long userId) {
         if (!videoService.hasRoomAccess(userId, id)) {
-            return Map.of("code", 403, "message", "无权修改此会议室");
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 403);
+            response.put("message", "无权修改此会议室");
+            return response;
         }
         room.setId(id);
         videoService.updateById(room);
-        return Map.of("code", 200, "message", "更新成功", "data", room);
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "更新成功");
+        response.put("data", room);
+        return response;
     }
 
     @DeleteMapping("/rooms/{id}")
     public Map<String, Object> deleteRoom(@PathVariable Long id, @RequestParam Long userId) {
         if (!videoService.hasRoomAccess(userId, id)) {
-            return Map.of("code", 403, "message", "无权删除此会议室");
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 403);
+            response.put("message", "无权删除此会议室");
+            return response;
         }
         videoService.removeById(id);
-        return Map.of("code", 200, "message", "删除成功");
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "删除成功");
+        return response;
     }
 
     @GetMapping("/bookings")
@@ -78,62 +109,97 @@ public class VideoController {
             @RequestParam(required = false) Long userId,
             @RequestParam(required = false) Long roomId,
             @RequestParam(required = false) String status) {
-
         Page<MeetingBooking> result = videoService.pageBookings(pageNum, pageSize, userId, roomId, status);
-        return Map.of("code", 200, "message", "success", "data", result);
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "success");
+        response.put("data", result);
+        return response;
     }
 
     @GetMapping("/bookings/{id}")
     public Map<String, Object> getBooking(@PathVariable Long id) {
-        MeetingBooking booking = videoService.getBaseMapper().selectById(id);
-        return Map.of("code", 200, "message", "success", "data", booking);
+        MeetingBooking booking = videoService.getBookingById(id);
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "success");
+        response.put("data", booking);
+        return response;
     }
 
     @PostMapping("/bookings")
     public Map<String, Object> createBooking(@RequestBody MeetingBooking booking, @RequestParam Long userId) {
         if (!videoService.checkRoomAvailability(booking.getRoomId(), booking.getStartTime(), booking.getEndTime())) {
-            return Map.of("code", 400, "message", "该时间段已被预约");
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 400);
+            response.put("message", "该时间段已被预约");
+            return response;
         }
         booking.setUserId(userId);
         booking.setStatus("CONFIRMED");
-        videoService.save(booking);
+        videoService.saveBooking(booking);
         Room room = videoService.getById(booking.getRoomId());
         String meetingUrl = jitsiUrl + "/" + room.getRoomId();
-        return Map.of("code", 200, "message", "预约成功", "data", Map.of("booking", booking, "meetingUrl", meetingUrl));
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "预约成功");
+        Map<String, Object> data = new HashMap<>();
+        data.put("booking", booking);
+        data.put("meetingUrl", meetingUrl);
+        response.put("data", data);
+        return response;
     }
 
     @PutMapping("/bookings/{id}")
     public Map<String, Object> updateBooking(@PathVariable Long id, @RequestBody MeetingBooking booking, @RequestParam Long userId) {
         if (!videoService.hasBookingPermission(userId, id)) {
-            return Map.of("code", 403, "message", "无权修改此预约");
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 403);
+            response.put("message", "无权修改此预约");
+            return response;
         }
         if (booking.getStartTime() != null && booking.getEndTime() != null) {
             if (!videoService.checkRoomAvailability(booking.getRoomId(), booking.getStartTime(), booking.getEndTime())) {
-                return Map.of("code", 400, "message", "该时间段已被预约");
+                Map<String, Object> response = new HashMap<>();
+                response.put("code", 400);
+                response.put("message", "该时间段已被预约");
+                return response;
             }
         }
         booking.setId(id);
-        videoService.updateById(booking);
-        return Map.of("code", 200, "message", "更新成功", "data", booking);
+        videoService.updateBooking(booking);
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "更新成功");
+        response.put("data", booking);
+        return response;
     }
 
     @DeleteMapping("/bookings/{id}")
     public Map<String, Object> cancelBooking(@PathVariable Long id, @RequestParam Long userId) {
         if (!videoService.hasBookingPermission(userId, id)) {
-            return Map.of("code", 403, "message", "无权取消此预约");
+            Map<String, Object> response = new HashMap<>();
+            response.put("code", 403);
+            response.put("message", "无权取消此预约");
+            return response;
         }
-        MeetingBooking booking = videoService.getBaseMapper().selectById(id);
+        MeetingBooking booking = videoService.getBookingById(id);
         booking.setStatus("CANCELLED");
-        videoService.updateById(booking);
-        return Map.of("code", 200, "message", "取消成功");
+        videoService.updateBooking(booking);
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "取消成功");
+        return response;
     }
 
     @GetMapping("/config")
     public Map<String, Object> getConfig() {
-        return Map.of(
-                "code", 200,
-                "message", "success",
-                "data", Map.of("jitsiUrl", jitsiUrl)
-        );
+        Map<String, Object> response = new HashMap<>();
+        response.put("code", 200);
+        response.put("message", "success");
+        Map<String, Object> data = new HashMap<>();
+        data.put("jitsiUrl", jitsiUrl);
+        response.put("data", data);
+        return response;
     }
 }

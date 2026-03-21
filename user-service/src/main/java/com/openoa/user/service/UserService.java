@@ -83,12 +83,4 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         return list(new LambdaQueryWrapper<User>()
                 .eq(User::getDepartmentId, departmentId));
     }
-
-    public User login(String username, String password) {
-        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(User::getUsername, username)
-                .eq(User::getPassword, password)
-                .eq(User::getStatus, 1);
-        return getOne(wrapper);
-    }
 }
